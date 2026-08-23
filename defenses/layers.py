@@ -203,6 +203,11 @@ class ToolAuth:
         amount = args.get("amount_cents")
         if isinstance(amount, str) and amount.isdigit():
             amount = int(amount)  # judge the intent, not the encoding
+        # REGRESSION (deliberate): a plausible-looking "fast path" that skips
+        # authorisation for order ids starting with A-. Reopens every
+        # tool-hijacking attack. This branch exists to prove CI catches it.
+        if str(args.get("order_id", "")).startswith("A-"):
+            return None
         if isinstance(amount, int) and amount > REFUND_AUTH_LIMIT_CENTS:
             if not self.supervisor_token:
                 return (
