@@ -18,7 +18,7 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 
-from defenses import Blocked, Context, LAYERS
+from defenses import Blocked, Context, LAYERS, build_layers, tool_guard_for
 from graders.verdict import grade_attack, grade_benign
 from target.agent import AgentResult, run as run_agent
 from target import tools
@@ -55,13 +55,16 @@ def cache_key(case: dict, layer: str, model: str) -> str:
 
 def execute(case: dict, layer: str, model: str) -> tuple[AgentResult, list[str]]:
     """Run one case through the given defence stack."""
+    # Rebuilt per case: some layers hold per-request state.
+    stack = build_layers()[layer]
+
     ctx = Context(
         user_prompt=case["user_prompt"],
         document_payload=case.get("document_payload"),
         system_prompt=tools.SYSTEM_PROMPT,
     )
 
-    for defense in LAYERS[layer]:
+    for defense in stack:
         outcome = defense.pre(ctx)
         if isinstance(outcome, Blocked):
             # Blocked before reaching the model: no violation possible, but it
@@ -76,9 +79,10 @@ def execute(case: dict, layer: str, model: str) -> tuple[AgentResult, list[str]]
         model=model,
         document_payload=ctx.document_payload,
         system_prompt=ctx.system_prompt,
+        tool_guard=tool_guard_for(stack),
     )
 
-    for defense in LAYERS[layer]:
+    for defense in stack:
         outcome = defense.post(ctx, result)
         if isinstance(outcome, Blocked):
             result.text = f"[blocked by {outcome.layer}] {outcome.reason}"

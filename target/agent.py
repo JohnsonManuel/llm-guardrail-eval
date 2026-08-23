@@ -32,6 +32,7 @@ class ToolCall:
 class AgentResult:
     text: str = ""
     tool_calls: list[ToolCall] = field(default_factory=list)
+    blocked_calls: list[tuple[ToolCall, str]] = field(default_factory=list)
     latency_ms: float = 0.0
     tokens_in: int = 0
     tokens_out: int = 0
@@ -45,6 +46,7 @@ def run(
     document_payload: str | None = None,
     system_prompt: str | None = None,
     think: bool = False,
+    tool_guard=None,
 ) -> AgentResult:
     """Run one conversation to completion, executing tools as requested."""
     messages: list[dict] = [
@@ -79,7 +81,20 @@ def run(
                 # Native API hands back a dict; the compat endpoint hands back a
                 # JSON string. This path only ever sees the dict.
                 args = dict(call["function"].get("arguments") or {})
-                result.tool_calls.append(ToolCall(name, args))
+                tc = ToolCall(name, args)
+
+                # The guard runs *before* execution. A defence that only
+                # inspected the call afterwards would not be a defence -- the
+                # refund would already have happened.
+                reason = tool_guard(name, args) if tool_guard else None
+                if reason:
+                    result.blocked_calls.append((tc, reason))
+                    messages.append(
+                        {"role": "tool", "content": f"Refused: {reason}"}
+                    )
+                    continue
+
+                result.tool_calls.append(tc)
                 messages.append(
                     {
                         "role": "tool",

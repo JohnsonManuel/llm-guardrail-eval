@@ -41,9 +41,32 @@ class Defense(Protocol):
     def post(self, ctx: Context, out): ...
 
 
-# Cumulative layer definitions. Keys are the layer names used in result files.
-LAYERS: dict[str, list[Defense]] = {
-    "L0": [],
-}
+def build_layers() -> dict[str, list]:
+    """Cumulative stacks: L3 means L1+L2+L3.
 
-LAYER_ORDER = ["L0"]
+    Built fresh per call because some layers hold per-request state.
+    """
+    from defenses.layers import InputScan, OutputScan, SchemaAllowlist, Spotlight, ToolAuth
+
+    order = [Spotlight(), InputScan(), SchemaAllowlist(), OutputScan(), ToolAuth()]
+    return {"L0": [], **{f"L{i}": order[:i] for i in range(1, 6)}}
+
+
+LAYERS = build_layers()
+LAYER_ORDER = ["L0", "L1", "L2", "L3", "L4", "L5"]
+
+
+def tool_guard_for(stack: list) -> "callable | None":
+    """Compose the tool guards in a stack. First refusal wins."""
+    guards = [d.tool_guard for d in stack if hasattr(d, "tool_guard")]
+    if not guards:
+        return None
+
+    def guard(name: str, args: dict) -> str | None:
+        for g in guards:
+            reason = g(name, args)
+            if reason:
+                return reason
+        return None
+
+    return guard
