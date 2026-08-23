@@ -1,5 +1,5 @@
 __pycache__/
 *.pyc
 .cache/
-results/*.json
+# results/*.json  -- committed: they are the deliverable
 .cache/
