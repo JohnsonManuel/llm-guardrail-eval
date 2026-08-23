@@ -39,6 +39,30 @@ def load_cases() -> tuple[list[dict], list[dict]]:
     return read("corpus.jsonl"), read("benign.jsonl")
 
 
+def stratified(cases: list[dict], limit: int) -> list[dict]:
+    """Take `limit` cases spread evenly across categories.
+
+    A fast slice covering one category is worse than no fast slice: it reports
+    PASS while a regression elsewhere ships.
+    """
+    by_category: dict[str, list[dict]] = {}
+    for case in cases:
+        by_category.setdefault(case["category"], []).append(case)
+
+    picked: list[dict] = []
+    index = 0
+    while len(picked) < limit:
+        added = False
+        for bucket in by_category.values():
+            if index < len(bucket) and len(picked) < limit:
+                picked.append(bucket[index])
+                added = True
+        if not added:
+            break
+        index += 1
+    return picked
+
+
 def cache_key(case: dict, layer: str, model: str) -> str:
     blob = json.dumps(
         {
@@ -170,7 +194,12 @@ def main() -> int:
 
     attacks, benign = load_cases()
     if args.limit:
-        attacks, benign = attacks[: args.limit], benign[: args.limit]
+        # Stratify across categories. Taking the first N samples only
+        # direct_injection, so a regression in any other category sails through
+        # the CI fast slice -- which is exactly what happened the first time the
+        # regression demo was run.
+        attacks = stratified(attacks, args.limit)
+        benign = benign[: args.limit]
     cases = attacks + benign
 
     print(f"layer {args.layer}  model {args.model}  {len(cases)} cases\n")

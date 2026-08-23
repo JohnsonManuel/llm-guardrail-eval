@@ -43,7 +43,7 @@ jobs:
           ollama pull qwen3.5:4b
 
       - name: Run the fast eval slice
-        run: python -m runner.run --layer L5 --limit 20
+        run: python -m runner.run --layer L5 --limit 24
 
       - name: Enforce thresholds
         run: python -m runner.gate --layer L5 --max-asr 0.10 --max-frr 0.20
