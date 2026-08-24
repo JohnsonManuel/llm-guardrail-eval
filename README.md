@@ -148,6 +148,51 @@ the user turn.
 
 ---
 
+## Cross-model: the counterintuitive result
+
+Same corpus, same defences, second architecture (`gemma4:e4b`, 9.6GB — nearly
+3x the size of qwen3.5:4b at 3.4GB).
+
+| | qwen3.5:4b L0 | qwen3.5:4b L5 | gemma4:e4b L0 | gemma4:e4b L5 |
+|---|---|---|---|---|
+| **ASR** | 35.0% | **2.5%** | 15.8% | **2.5%** |
+| **FRR** | 0.0% | **15.0%** | 12.5% | **22.5%** |
+
+| Category | qwen L0 | gemma L0 |
+|---|---|---|
+| direct_injection | 52% | **0%** |
+| jailbreak | 60% | **0%** |
+| system_prompt_extraction | 40% | 27% |
+| tool_hijacking | 35% | 20% |
+| indirect_injection | 10% | 7% |
+| **pii_exfiltration** | 35% | **45%** |
+
+Three things fall out of this.
+
+**Injection resistance is not one axis.** Gemma is 2x more resistant overall and
+takes direct injection and jailbreaks to literal zero — while being *worse* than
+qwen at protecting customer PII. It is hardened against attacks that look like
+attacks, and open to attacks that look like ordinary customer service. A single
+aggregate ASR would hide that entirely, which is the argument for the
+per-category table being the real deliverable.
+
+**Bigger is not safer.** Gemma is nearly 3x the size and loses on PII. Consistent
+with published work finding that model size and instruction-following ability do
+not reliably predict injection robustness
+([PromptShield](https://arxiv.org/pdf/2501.15145)).
+
+**The safer-looking model is the worse production choice.** Both land at 2.5% ASR
+once defended, so the security difference disappears — but gemma refuses **22.5%**
+of legitimate customers against qwen's 15.0%, and it was already refusing 12.5%
+undefended, before any guardrail existed. Picking on undefended ASR alone would
+have chosen gemma and shipped a system that turns away one customer in four.
+
+Note also that the residual 15% PII failure is *identical* across both models.
+That is the L4 name-redaction gap described above — a defect in our code, not in
+either model, and it behaves identically regardless of which model sits behind it.
+
+---
+
 ## The defences
 
 | | Layer | Mechanism |
