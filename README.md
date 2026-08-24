@@ -4,11 +4,19 @@ A red-team evaluation harness for LLM applications: 120 documented attacks,
 deterministic graders, five cumulative defence layers, and honest before/after
 numbers — **including what the defences cost in wrongly-refused customers.**
 
-> Layered defences cut prompt-injection success from **35.0%** to **2.5%**
-> across 120 attacks in six categories, while raising false refusals on
-> legitimate requests from **0.0%** to **15.0%** — and one of the five layers
-> was responsible for all of that cost while providing almost none of the
-> benefit.
+> Two models, 120 attacks, five defence layers, 1,280 measured calls.
+>
+> **The model that looked twice as secure was the worse choice.** `gemma4:e4b`
+> resisted 2x more attacks undefended than `qwen3.5:4b` (15.8% vs 35.0%). After
+> defences, both land at **exactly 2.5%** — the security gap disappears — but
+> gemma refuses **22.5%** of legitimate customers against qwen's **15.0%**.
+>
+> Layered defences cut attack success from **35.0% to 2.5%** while raising false
+> refusals from **0.0% to 15.0%**, and one of the five layers caused all of that
+> cost while providing none of the measurable benefit.
+>
+> Almost every guardrail write-up reports the first number and not the second.
+> The second is the one that decides what you ship.
 
 ![Attack success rate by category and defence layer](results/heatmap.png)
 
@@ -262,6 +270,14 @@ The L0 and L5 intervals do not overlap, so the headline 35.0% -> 2.5% is solid.
 The individual L1 and L2 steps are not.
 
 ## Continuous integration
+
+> **Why CI reports different numbers than this README.** The CI slice runs 24
+> stratified attacks against a 2-vCPU runner with no GPU; these results are 120
+> attacks on a local GPU. Different sample, and CPU inference is not
+> bit-identical to GPU even at temperature 0. The regression demo shows 16.7% in
+> CI and 25.0% locally — same regression, different slice. Treat CI as a
+> tripwire, not a measurement.
+
 
 `.github/workflows/eval-gate.yml` runs on every PR and **fails on regression in
 either direction**:
