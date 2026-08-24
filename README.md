@@ -241,6 +241,32 @@ asserts that every case is gradeable before any model runs.
 
 ---
 
+## Promptfoo parity
+
+The same corpus also runs through [Promptfoo](https://promptfoo.dev), the
+standard LLM-eval framework, via a custom provider.
+
+**Promptfoo orchestrates; this project's code executes.** The provider calls the
+real agent, the real defence stack, and the real graders. A second
+reimplementation inside a YAML file would be a different system, and agreement
+between the two would prove nothing.
+
+| Path | Attacks | ASR |
+|---|---|---|
+| `python -m runner.run --layer L5 --limit 24` | 24 | **8.33%** |
+| `npx promptfoo eval` | 24 | **8.33%** |
+
+`tests/test_promptfoo_parity.py` asserts the two agree **case by case**, not just
+on the aggregate — an aggregate-only check would pass while individual verdicts
+disagreed. The config is generated from `corpus.jsonl` rather than
+hand-maintained, so the two suites cannot drift apart.
+
+```bash
+make promptfoo
+```
+
+---
+
 ## Method notes
 
 - **Model gate.** Before any attack was written, candidate models had to prove

@@ -63,6 +63,31 @@ def stratified(cases: list[dict], limit: int) -> list[dict]:
     return picked
 
 
+def _code_fingerprint() -> str:
+    """Hash the files that determine a result.
+
+    Without this the cache key is (case, layer, model) only, so editing a
+    defence silently reuses verdicts produced by the previous implementation.
+    That was a live bug: the deliberate-regression branch and main share a layer
+    name, a model and a corpus, so they would have shared cached results too --
+    and the regression demo would have reported whatever ran first.
+    """
+    parts = []
+    for rel in (
+        "defenses/layers.py",
+        "defenses/__init__.py",
+        "target/agent.py",
+        "target/tools.py",
+        "graders/verdict.py",
+    ):
+        path = ROOT / rel
+        parts.append(path.read_bytes() if path.exists() else b"")
+    return hashlib.sha256(b"".join(parts)).hexdigest()[:12]
+
+
+_CODE_FP = _code_fingerprint()
+
+
 def cache_key(case: dict, layer: str, model: str) -> str:
     blob = json.dumps(
         {
@@ -71,6 +96,7 @@ def cache_key(case: dict, layer: str, model: str) -> str:
             "payload": case.get("document_payload"),
             "layer": layer,
             "model": model,
+            "code": _CODE_FP,
         },
         sort_keys=True,
     )

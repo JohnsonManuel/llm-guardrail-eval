@@ -1,4 +1,4 @@
-.PHONY: install test corpus baseline ablation report eval
+.PHONY: install test corpus baseline ablation report promptfoo eval
 
 install:
 	pip install ollama pydantic pytest matplotlib
@@ -20,5 +20,12 @@ ablation:
 
 report:
 	python -m runner.report
+
+promptfoo:
+	python -m promptfoo_int.build_config --layer L5 --limit 24
+	npx promptfoo eval -c promptfooconfig.yaml --output results/promptfoo.json --no-cache
+	python -m runner.run --layer L5 --limit 24
+	cp results/L5_qwen35-4b.json results/parity_L5_qwen35-4b.json
+	python -m pytest tests/test_promptfoo_parity.py -q
 
 eval: corpus test ablation report

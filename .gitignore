@@ -3,3 +3,5 @@ __pycache__/
 .cache/
 # results/*.json  -- committed: they are the deliverable
 .cache/
+node_modules/
+.promptfoo/
