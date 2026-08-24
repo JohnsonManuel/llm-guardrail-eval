@@ -267,6 +267,32 @@ make promptfoo
 
 ---
 
+## Tracing
+
+Every evaluated case emits one [Langfuse](https://langfuse.com) trace carrying
+the prompt, the injected document, the tool calls made, the tool calls
+*blocked*, which defence layers fired, and the final verdict — plus a `defended`
+score (1.0 = the defence held).
+
+Filtering to `defended = 0` in the UI gives every attack that landed, with the
+full conversation attached. The score comment names the reason, e.g.
+`name=Dana Weber` for the residual PII leaks.
+
+Optional. Without keys the module is a no-op and the eval runs unchanged —
+tracing can never alter a result or fail a run.
+
+```bash
+cp .env.example .env      # add your Langfuse keys
+python -m runner.trace    # end-to-end self-check
+```
+
+That self-check exists for a reason. Because tracing degrades *silently* by
+design, an API mistake produced a complete run with zero traces and no visible
+error. Silent degradation is correct during an eval and wrong during setup, so
+failures are loud in exactly one place.
+
+---
+
 ## Method notes
 
 - **Model gate.** Before any attack was written, candidate models had to prove

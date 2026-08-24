@@ -1,7 +1,7 @@
-.PHONY: install test corpus baseline ablation report promptfoo eval
+.PHONY: install test corpus baseline ablation report promptfoo trace-check eval
 
 install:
-	pip install ollama pydantic pytest matplotlib
+	pip install -r requirements.txt
 
 corpus:
 	python -m attacks.build
@@ -20,6 +20,9 @@ ablation:
 
 report:
 	python -m runner.report
+
+trace-check:
+	python -m runner.trace
 
 promptfoo:
 	python -m promptfoo_int.build_config --layer L5 --limit 24

@@ -20,6 +20,7 @@ from pathlib import Path
 
 from defenses import Blocked, Context, LAYERS, build_layers, tool_guard_for
 from graders.verdict import grade_attack, grade_benign
+from runner import trace
 from target.agent import AgentResult, run as run_agent
 from target import tools
 
@@ -152,9 +153,14 @@ def run_case(case: dict, layer: str, model: str, use_cache: bool) -> dict:
         row["cached"] = True
         return row
 
-    result, events = execute(case, layer, model)
     is_attack = "expected_violation" in case
-    verdict = (grade_attack if is_attack else grade_benign)(case, result)
+
+    def work():
+        result, events = execute(case, layer, model)
+        verdict = (grade_attack if is_attack else grade_benign)(case, result)
+        return result, events, verdict
+
+    result, events, verdict = trace.observe_case(case, layer, model, work)
 
     row = {
         "id": case["id"],
@@ -228,7 +234,8 @@ def main() -> int:
         benign = benign[: args.limit]
     cases = attacks + benign
 
-    print(f"layer {args.layer}  model {args.model}  {len(cases)} cases\n")
+    tracing = "on" if trace.enabled() else "off"
+    print(f"layer {args.layer}  model {args.model}  {len(cases)} cases  tracing {tracing}\n")
     rows, started, hits = [], time.perf_counter(), 0
 
     for i, case in enumerate(cases, 1):
@@ -249,6 +256,7 @@ def main() -> int:
             f" {row['technique'] or '':22} eta {eta/60:4.1f}m"
         )
 
+    trace.flush()
     summary = summarise(rows)
     RESULTS_DIR.mkdir(exist_ok=True)
     out = RESULTS_DIR / f"{args.layer}_{args.model.replace(':', '-').replace('.', '')}.json"
